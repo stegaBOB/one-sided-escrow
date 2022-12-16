@@ -6,6 +6,7 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[program]
 pub mod one_sided_escrow {
+	use anchor_lang::system_program::{transfer, Transfer};
 	use super::*;
 
 	pub fn set_authority(ctx: Context<SetAuthority>, authority: Pubkey) -> Result<()> {
@@ -14,10 +15,16 @@ pub mod one_sided_escrow {
 		Ok(())
 	}
 
-	pub fn create_escrow(ctx: Context<CreateEscrow>, seller: Pubkey) -> Result<()> {
+	pub fn create_escrow(ctx: Context<CreateEscrow>, seller: Pubkey, amount: u64) -> Result<()> {
 		let escrow = &mut ctx.accounts.escrow;
 		escrow.buyer = ctx.accounts.buyer.key();
 		escrow.seller = seller;
+		let transfer_amount_needed = amount.saturating_sub(<&mut Account<'_, Escrow> as AsRef<AccountInfo>>::as_ref(&escrow).lamports());
+		if transfer_amount_needed > 0 {
+			let transfer_accounts = Transfer { from: ctx.accounts.buyer.to_account_info(), to: escrow.to_account_info() };
+			let transfer_context = CpiContext::new(ctx.accounts.system_program.to_account_info(), transfer_accounts);
+			transfer(transfer_context, transfer_amount_needed).unwrap();
+		}
 		Ok(())
 	}
 
