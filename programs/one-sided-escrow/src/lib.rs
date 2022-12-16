@@ -76,7 +76,6 @@ pub mod state {
 		pub const PREFIX: &'static str = "escrow";
 		pub const SIZE: usize =
 			8 + // discriminator
-					32 + // escrow-manager
 					32 + // buyer
 					32;  // seller
 	}
