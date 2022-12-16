@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
+use crate::program::OneSidedEscrow;
 use crate::state::*;
 use crate::context::*;
-
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[program]
@@ -31,6 +31,11 @@ pub mod one_sided_escrow {
 
 	pub fn authority_override(ctx: Context<AuthorityOverride>, authority_ruling: AuthorityRuling) -> Result<()> {
 		let escrow_account = &mut ctx.accounts.escrow;
+		let authority_settings = &ctx.accounts.authority_settings;
+		let authority = &ctx.accounts.authority;
+		if authority.key() != authority_settings.address.key() {
+			return err!(EscrowError::AuthorityMismatch);
+		}
 		let sol_destination = match authority_ruling {
 			AuthorityRuling::Buyer => ctx.accounts.buyer.to_account_info(),
 			AuthorityRuling::Seller => ctx.accounts.seller.to_account_info(),
@@ -40,8 +45,14 @@ pub mod one_sided_escrow {
 	}
 }
 
+#[error_code]
+pub enum EscrowError {
+	#[msg("Authority Pubkey does not match the AuthoritySettings account.")]
+	AuthorityMismatch,
+}
+
 pub mod state {
-	use super::*;
+	pub use super::*;
 
 	#[account]
 	pub struct AuthoritySettings {
@@ -74,11 +85,11 @@ pub mod state {
 	pub enum AuthorityRuling {
 		Buyer,
 		Seller,
+
 	}
 }
 
 pub mod context {
-	use crate::program::OneSidedEscrow;
 	use super::*;
 
 	#[derive(Accounts)]
@@ -136,9 +147,11 @@ pub mod context {
 		pub seller: AccountInfo<'info>,
 		#[account(mut, seeds = [Escrow::PREFIX.as_ref(), buyer.key().as_ref(), seller.key().as_ref()], bump, has_one = buyer, has_one = seller)]
 		pub escrow: Account<'info, Escrow>,
-		/// CHECK: Can be any account info. verified in constraints
+		/// CHECK: Can be any account info. verified in program logic
 		#[account(mut)]
 		pub authority: AccountInfo<'info>,
 		pub program: Account<'info, ProgramData>,
+		#[account(seeds = [AuthoritySettings::PREFIX.as_ref()], bump)]
+		pub authority_settings: Account<'info, AuthoritySettings>,
 	}
 }
