@@ -33,7 +33,7 @@ pub mod one_sided_escrow {
 		let escrow_account = &mut ctx.accounts.escrow;
 		let authority_settings = &ctx.accounts.authority_settings;
 		let authority = &ctx.accounts.authority;
-		if authority.key() != authority_settings.address.key() {
+		if authority.key() != authority_settings.address {
 			return err!(EscrowError::AuthorityMismatch);
 		}
 		let sol_destination = match authority_ruling {
